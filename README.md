@@ -249,6 +249,7 @@ This project is licensed under the **MIT License**.
 
 <div align="center">
 
-Made with ❤️ · Give it a ⭐ if you found it useful!
+Made with ❤️ yawshyarr ·
+Give it a ⭐ if you found it useful!
 
 </div>
