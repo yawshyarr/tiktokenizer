@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tokenizer</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --soft: #f7f8fa;
+    --soft-blue: #eef5ff;
+    --border: #d8dee8;
+    --border-strong: #b9c3d1;
+    --text: #17202a;
+    --muted: #667085;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --danger: #b91c1c;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  .wrap {
+    width: min(1040px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 34px 0 56px;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  h1 {
+    margin: 0 0 5px;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .tagline {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .status {
+    min-height: 24px;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+
+  .input-panel {
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .actions,
+  .samples {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn,
+  .sample-btn {
+    min-height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .btn {
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .sample-btn {
+    padding: 0 10px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .btn:hover,
+  .sample-btn:hover {
+    border-color: var(--border-strong);
+    background: var(--soft);
+  }
+
+  .btn.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn.primary:hover {
+    border-color: var(--accent-dark);
+    background: var(--accent-dark);
+  }
+
+  .spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #d6dbe3;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 170px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    background: #fff;
+    font-size: 15px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+  }
+
+  textarea:focus,
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--soft-blue);
+  }
+
+  .text-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin: 16px 0 20px;
+  }
+
+  .stat {
+    padding: 12px;
+  }
+
+  .stat-n {
+    overflow: hidden;
+    font-size: 24px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stat-l {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 0 8px;
+  }
+
+  .section-label {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: min(100%, 320px);
+  }
+
+  .search-input {
+    width: 100%;
+    min-height: 36px;
+    padding: 0 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+    color: var(--text);
+    background: #fff;
+    font-size: 14px;
+  }
+
+  .match-count {
+    min-width: 68px;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .token-display {
+    min-height: 100px;
+    padding: 16px;
+    font-size: 15px;
+    line-height: 2.05;
+    word-break: break-word;
+  }
+
+  .placeholder {
+    color: var(--muted);
+  }
+
+  .tok {
+    display: inline;
+    padding: 1px 3px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.15s, outline-color 0.15s, box-shadow 0.15s;
+  }
+
+  .tok.dim {
+    opacity: 0.25;
+  }
+
+  .tok.lit {
+    outline: 2px solid #111827;
+    outline-offset: 1px;
+  }
+
+  .tok.search-hit {
+    box-shadow: 0 0 0 2px #111827 inset;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+    gap: 16px;
+    margin-top: 18px;
+  }
+
+  .box-body {
+    padding: 12px;
+  }
+
+  .ids-box {
+    min-height: 80px;
+    max-height: 156px;
+    overflow: auto;
+    color: #374151;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    word-break: break-word;
+  }
+
+  .freq-grid {
+    display: grid;
+    gap: 8px;
+  }
+
+  .freq-row {
+    display: grid;
+    grid-template-columns: minmax(80px, 150px) 1fr 32px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .freq-label {
+    overflow: hidden;
+    color: #374151;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .freq-bar-bg {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #eef1f5;
+  }
+
+  .freq-bar {
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  .freq-count {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .table-wrap {
+    max-height: 340px;
+    overflow: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th,
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #edf0f4;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  td.mono {
+    color: #374151;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+  }
+
+  .token-cell {
+    max-width: 420px;
+    word-break: break-word;
+  }
+
+  .tooltip {
+    position: fixed;
+    z-index: 20;
+    display: none;
+    max-width: 280px;
+    padding: 7px 9px;
+    border: 1px solid #c9d1dc;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+    color: var(--text);
+    font-size: 13px;
+    pointer-events: none;
+  }
+
+  .flash {
+    background: var(--soft-blue);
+  }
+
+  @media (max-width: 860px) {
+    header {
+      display: block;
+    }
+
+    .status {
+      margin-top: 8px;
+      text-align: left;
+    }
+
+    .stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .two-col {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .wrap {
+      width: min(100% - 24px, 1040px);
+      padding-top: 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    .stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .toolbar,
+    .section-head {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .actions,
+    .samples,
+    .search-box {
+      width: 100%;
+    }
+
+    .btn,
+    .sample-btn {
+      flex: 1;
+    }
+
+    .match-count {
+      min-width: 52px;
+    }
+
+    .freq-row {
+      grid-template-columns: minmax(70px, 120px) 1fr 28px;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div>
+      <h1>Tokenizer</h1>
+      <p class="tagline">A clean visual view of tokens, IDs, counts, and repeated pieces.</p>
+    </div>
+    <div class="status" id="status">Ready</div>
+  </header>
+
+  <section class="panel input-panel">
+    <div class="toolbar">
+      <div class="samples" aria-label="Sample text">
+        <button class="sample-btn" type="button" data-sample="basic">Basic</button>
+        <button class="sample-btn" type="button" data-sample="code">Code</button>
+        <button class="sample-btn" type="button" data-sample="mixed">Mixed</button>
+      </div>
+      <div class="actions">
+        <div class="spinner" id="spinner" aria-hidden="true"></div>
+        <button class="btn" id="copyBtn" type="button">Copy IDs</button>
+        <button class="btn" id="copyTableBtn" type="button">Copy Table</button>
+        <button class="btn" id="clearBtn" type="button">Clear</button>
+      </div>
+    </div>
+
+    <textarea id="inputText" placeholder="Type or paste text here">Tokenization turns text into smaller pieces called tokens.
+
+127 + 677 = 804
+I have an egg.</textarea>
+    <div class="text-meta">
+      <span id="liveChars">0 characters</span>
+      <span>GPT-2 tokenizer</span>
+    </div>
+  </section>
+
+  <section class="stats" aria-label="Token statistics">
+    <div class="stat panel"><div class="stat-n" id="sTok">-</div><div class="stat-l">Tokens</div></div>
+    <div class="stat panel"><div class="stat-n" id="sUniq">-</div><div class="stat-l">Unique</div></div>
+    <div class="stat panel"><div class="stat-n" id="sChars">-</div><div class="stat-l">Characters</div></div>
+    <div class="stat panel"><div class="stat-n" id="sWords">-</div><div class="stat-l">Words</div></div>
+    <div class="stat panel"><div class="stat-n" id="sAvg">-</div><div class="stat-l">Avg token length</div></div>
+    <div class="stat panel"><div class="stat-n" id="sRepeated">-</div><div class="stat-l">Repeated tokens</div></div>
+  </section>
+
+  <div class="section-head">
+    <p class="section-label">Tokens</p>
+    <div class="search-box">
+      <input class="search-input" id="tokenSearch" type="search" placeholder="Search token or ID" />
+      <span class="match-count" id="matchCount">0 found</span>
+    </div>
+  </div>
+  <div class="token-display panel" id="tokenDisplay">
+    <span class="placeholder">Waiting for text...</span>
+  </div>
+
+  <section class="two-col">
+    <div>
+      <div class="section-head">
+        <p class="section-label">Token IDs</p>
+      </div>
+      <div class="ids-box panel box-body" id="idsBox">-</div>
+    </div>
+
+    <div>
+      <div class="section-head">
+        <p class="section-label">Frequency</p>
+      </div>
+      <div class="panel box-body">
+        <div class="freq-grid" id="freqChart"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <p class="section-label">Token Table</p>
+  </div>
+  <div class="panel table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Token</th>
+          <th>ID</th>
+          <th>Chars</th>
+        </tr>
+      </thead>
+      <tbody id="tokenTable">
+        <tr><td colspan="4" class="placeholder">Waiting for text...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const PALETTE = [
+  '#dbeafe', '#dcfce7', '#fef3c7', '#fee2e2', '#ede9fe',
+  '#e0f2fe', '#fce7f3', '#ecfccb', '#ffedd5', '#f1f5f9'
+];
+const BORDER_PALETTE = [
+  '#60a5fa', '#4ade80', '#fbbf24', '#f87171', '#a78bfa',
+  '#38bdf8', '#f472b6', '#a3e635', '#fb923c', '#94a3b8'
+];
+const SAMPLES = {
+  basic: `Tokenization turns text into smaller pieces called tokens.\n\n127 + 677 = 804\nI have an egg.`,
+  code: `function total(items) {\n  return items.reduce((sum, item) => sum + item.price, 0);\n}\n\nconsole.log(total(cart));`,
+  mixed: `Hello, नमस्ते, bonjour.\n\nEmail: hello@example.com\nPrice: $19.99\nSpaces   and punctuation!!!`
+};
+
+const colorMap = {};
+let colorIdx = 0;
+let allSpans = [];
+let lastTokens = [];
+let lastIds = [];
+let pinnedKey = null;
+let debounceTimer;
+const tooltip = document.getElementById('tooltip');
+
+function getColorPair(token) {
+  const key = token.trim().toLowerCase();
+  if (!key) return null;
+  if (!colorMap[key]) {
+    const index = colorIdx++ % PALETTE.length;
+    colorMap[key] = { bg: PALETTE[index], border: BORDER_PALETTE[index] };
+  }
+  return colorMap[key];
+}
+
+function visibleToken(token) {
+  if (token === '\n') return '[newline]';
+  if (token.trim()) return token;
+  return token.replaceAll(' ', '[space]');
+}
+
+function setStatus(message) {
+  document.getElementById('status').textContent = message;
+}
+
+function updateTextMeta() {
+  const length = document.getElementById('inputText').value.length;
+  document.getElementById('liveChars').textContent = `${length} character${length === 1 ? '' : 's'}`;
+}
+
+function renderResponse(data) {
+  const { tokens, ids, stats } = data;
+  lastTokens = tokens;
+  lastIds = ids;
+
+  document.getElementById('sTok').textContent = stats.total;
+  document.getElementById('sUniq').textContent = stats.unique;
+  document.getElementById('sChars').textContent = stats.chars;
+  document.getElementById('sWords').textContent = stats.words;
+  document.getElementById('sAvg').textContent = stats.avg_len;
+  document.getElementById('sRepeated').textContent = stats.repeated;
+
+  renderTokens(tokens, ids, stats);
+  renderFrequency(stats);
+  renderTable(tokens, ids);
+  document.getElementById('idsBox').textContent = '[' + ids.join(', ') + ']';
+  applySearch();
+  setStatus(`${stats.total} tokens analyzed`);
+}
+
+function renderTokens(tokens, ids, stats) {
+  const display = document.getElementById('tokenDisplay');
+  display.innerHTML = '';
+  allSpans = [];
+
+  tokens.forEach((tok, i) => {
+    const span = document.createElement('span');
+    span.className = 'tok';
+    span.textContent = tok;
+    span.dataset.index = String(i + 1);
+    span.dataset.id = String(ids[i]);
+    span.dataset.token = tok;
+
+    if (tok.trim()) {
+      const colors = getColorPair(tok);
+      span.style.background = colors.bg;
+      span.style.borderBottom = `2px solid ${colors.border}`;
+      span.dataset.key = tok.trim().toLowerCase();
+
+      span.addEventListener('mouseenter', e => {
+        if (pinnedKey) return;
+        highlight(span.dataset.key);
+        showTooltip(e, tok, ids[i], stats);
+      });
+      span.addEventListener('mousemove', moveTooltip);
+      span.addEventListener('mouseleave', () => {
+        if (!pinnedKey) {
+          resetHighlight();
+          tooltip.style.display = 'none';
+        }
+      });
+      span.addEventListener('click', () => {
+        const key = span.dataset.key;
+        if (pinnedKey === key) {
+          pinnedKey = null;
+          resetHighlight();
+          tooltip.style.display = 'none';
+        } else {
+          pinnedKey = key;
+          highlight(key);
+        }
+      });
+    }
+
+    display.appendChild(span);
+    allSpans.push(span);
+  });
+}
+
+function renderFrequency(stats) {
+  const chart = document.getElementById('freqChart');
+  chart.innerHTML = '';
+  const maxFrequency = stats.top[0]?.[1] || 1;
+
+  if (!stats.top.length) {
+    const empty = document.createElement('span');
+    empty.className = 'placeholder';
+    empty.textContent = 'No tokens yet.';
+    chart.appendChild(empty);
+    return;
+  }
+
+  stats.top.forEach(([tok, count]) => {
+    const colors = getColorPair(tok) || { border: '#94a3b8' };
+    const percent = Math.round((count / maxFrequency) * 100);
+    const row = document.createElement('div');
+    const label = document.createElement('span');
+    const barBg = document.createElement('div');
+    const bar = document.createElement('div');
+    const countEl = document.createElement('span');
+
+    row.className = 'freq-row';
+    label.className = 'freq-label';
+    label.title = tok;
+    label.textContent = visibleToken(tok);
+    barBg.className = 'freq-bar-bg';
+    bar.className = 'freq-bar';
+    bar.style.width = `${percent}%`;
+    bar.style.background = colors.border;
+    countEl.className = 'freq-count';
+    countEl.textContent = count;
+
+    barBg.appendChild(bar);
+    row.append(label, barBg, countEl);
+    chart.appendChild(row);
+  });
+}
+
+function renderTable(tokens, ids) {
+  const table = document.getElementById('tokenTable');
+  table.innerHTML = '';
+
+  if (!tokens.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.className = 'placeholder';
+    cell.textContent = 'Waiting for text...';
+    row.appendChild(cell);
+    table.appendChild(row);
+    return;
+  }
+
+  tokens.forEach((tok, index) => {
+    const row = document.createElement('tr');
+    row.dataset.index = String(index + 1);
+    row.dataset.id = String(ids[index]);
+    row.dataset.token = tok;
+
+    const num = document.createElement('td');
+    const token = document.createElement('td');
+    const id = document.createElement('td');
+    const chars = document.createElement('td');
+
+    num.textContent = index + 1;
+    token.textContent = visibleToken(tok);
+    token.className = 'token-cell';
+    id.textContent = ids[index];
+    id.className = 'mono';
+    chars.textContent = tok.length;
+
+    row.append(num, token, id, chars);
+    table.appendChild(row);
+  });
+}
+
+function highlight(key) {
+  allSpans.forEach(span => {
+    if (!span.dataset.key) return;
+    span.classList.toggle('lit', span.dataset.key === key);
+    span.classList.toggle('dim', span.dataset.key !== key);
+  });
+}
+
+function resetHighlight() {
+  allSpans.forEach(span => {
+    span.classList.remove('lit', 'dim');
+  });
+}
+
+function showTooltip(e, tok, id, stats) {
+  const match = stats.top.find(([item]) => item.trim().toLowerCase() === tok.trim().toLowerCase());
+  const frequency = match ? match[1] : 1;
+  tooltip.textContent = `Token ID ${id} | ${visibleToken(tok)} | ${frequency} time${frequency === 1 ? '' : 's'}`;
+  tooltip.style.display = 'block';
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  tooltip.style.left = `${e.clientX + 14}px`;
+  tooltip.style.top = `${e.clientY - 36}px`;
+}
+
+function resetEmptyState() {
+  lastTokens = [];
+  lastIds = [];
+  document.getElementById('tokenDisplay').innerHTML = '<span class="placeholder">Waiting for text...</span>';
+  document.getElementById('idsBox').textContent = '-';
+  document.getElementById('freqChart').innerHTML = '<span class="placeholder">No text entered.</span>';
+  document.getElementById('tokenTable').innerHTML = '<tr><td colspan="4" class="placeholder">Waiting for text...</td></tr>';
+  document.getElementById('matchCount').textContent = '0 found';
+  ['sTok', 'sUniq', 'sChars', 'sWords', 'sAvg', 'sRepeated'].forEach(id => {
+    document.getElementById(id).textContent = '-';
+  });
+  setStatus('Ready');
+}
+
+function applySearch() {
+  const query = document.getElementById('tokenSearch').value.trim().toLowerCase();
+  const rows = document.querySelectorAll('#tokenTable tr[data-index]');
+  let matches = 0;
+
+  allSpans.forEach(span => span.classList.remove('search-hit', 'dim'));
+  rows.forEach(row => row.style.display = '');
+
+  if (!query) {
+    document.getElementById('matchCount').textContent = '0 found';
+    return;
+  }
+
+  allSpans.forEach(span => {
+    const haystack = `${span.dataset.token || ''} ${span.dataset.id || ''}`.toLowerCase();
+    const hit = haystack.includes(query);
+    span.classList.toggle('search-hit', hit);
+    span.classList.toggle('dim', !hit);
+    if (hit) matches += 1;
+  });
+
+  rows.forEach(row => {
+    const haystack = `${row.dataset.token || ''} ${row.dataset.id || ''}`.toLowerCase();
+    row.style.display = haystack.includes(query) ? '' : 'none';
+  });
+
+  document.getElementById('matchCount').textContent = `${matches} found`;
+}
+
+async function fetchTokens() {
+  const text = document.getElementById('inputText').value;
+  updateTextMeta();
+
+  if (!text.trim()) {
+    resetEmptyState();
+    return;
+  }
+
+  document.getElementById('spinner').style.display = 'block';
+  setStatus('Analyzing...');
+  try {
+    const res = await fetch('/tokenize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    if (!res.ok) throw new Error('Request failed');
+
+    const data = await res.json();
+    pinnedKey = null;
+    tooltip.style.display = 'none';
+    renderResponse(data);
+  } catch (err) {
+    document.getElementById('tokenDisplay').innerHTML = '<span class="placeholder" style="color: var(--danger);">Server error. Please check Flask is running.</span>';
+    setStatus('Server error');
+  } finally {
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+
+function copyText(text, button) {
+  if (!text || text === '-') return;
+  navigator.clipboard.writeText(text);
+  button.classList.add('flash');
+  setTimeout(() => button.classList.remove('flash'), 300);
+}
+
+document.getElementById('inputText').addEventListener('input', () => {
+  updateTextMeta();
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(fetchTokens, 300);
+});
+
+document.getElementById('tokenSearch').addEventListener('input', applySearch);
+
+document.querySelectorAll('[data-sample]').forEach(button => {
+  button.addEventListener('click', () => {
+    document.getElementById('inputText').value = SAMPLES[button.dataset.sample];
+    pinnedKey = null;
+    tooltip.style.display = 'none';
+    fetchTokens();
+  });
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('inputText').value = '';
+  document.getElementById('tokenSearch').value = '';
+  pinnedKey = null;
+  tooltip.style.display = 'none';
+  updateTextMeta();
+  fetchTokens();
+});
+
+document.getElementById('copyBtn').addEventListener('click', event => {
+  copyText(document.getElementById('idsBox').textContent, event.currentTarget);
+});
+
+document.getElementById('copyTableBtn').addEventListener('click', event => {
+  const header = 'index,token,id,chars';
+  const rows = lastTokens.map((tok, index) => {
+    const clean = tok.replaceAll('"', '""').replaceAll('\n', '\\n');
+    return `${index + 1},"${clean}",${lastIds[index]},${tok.length}`;
+  });
+  copyText([header, ...rows].join('\n'), event.currentTarget);
+});
+
+updateTextMeta();
+fetchTokens();
+</script>
+</body>
+</html>
